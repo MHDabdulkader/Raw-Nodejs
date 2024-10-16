@@ -45,18 +45,7 @@ handler.handleReqRes = (req, res) =>{
 
     const chooseHandler = routes[trimmedPath] ? routes[trimmedPath] : notFoundHandler;
 
-    chooseHandler(requestProperties, (statusCode, payload)=>{
-        // safety for statusCode and payload(If payload get blank than a blank object took as payload)
-        statusCode = typeof(statusCode) === 'number'? statusCode : 500;
-        payload = typeof(payload) === 'object'? payload : {};
-
-        // response should be stringify
-        const payloadString = JSON.stringify(payload);
-
-        /// return response
-        res.writeHead(statusCode);
-        res.end(payloadString);
-    })
+    
 
 
     // body read all formats from getting buffer means payload
@@ -67,7 +56,20 @@ handler.handleReqRes = (req, res) =>{
     req.on('end', ()=>{
         realData += decoder.end();
         
-        console.log(realData);
+
+        // for using realData to means body:
+        chooseHandler(requestProperties, (statusCode, payload)=>{
+            // safety for statusCode and payload(If payload get blank than a blank object took as payload)
+            statusCode = typeof(statusCode) === 'number'? statusCode : 500;
+            payload = typeof(payload) === 'object'? payload : {};
+    
+            // response should be stringify
+            const payloadString = JSON.stringify(payload);
+    
+            /// return response
+            res.writeHead(statusCode);
+            res.end(payloadString);
+        })
         res.end("Hello world programmer");
     })
 
