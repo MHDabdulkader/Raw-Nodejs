@@ -43,10 +43,38 @@ utilites.hash = (str) => {
 
         return hashing;
     }
-    else{
+    else {
         return false;
     }
 }
+
+
+// create random string
+utilites.createRandomString = (strLength) => {
+    let length = strLength;
+
+    length = typeof (length) === "number" && length > 0 ? length : false;
+
+    if (length) {
+        let possibleCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+
+        let lengthP = possibleCharacters.length;
+        let outputString = "";
+        for (let i = 0; i < length; i++) {
+            const randomCharacter = possibleCharacters.charAt(Math.round(Math.random() * lengthP))
+
+            outputString += randomCharacter;
+        }
+        // console.log("random string lenght ",outputString.length);
+        return outputString;
+    }
+    else {
+        return false;
+    }
+
+}
+
+
 
 // exports
 module.exports = utilites;
