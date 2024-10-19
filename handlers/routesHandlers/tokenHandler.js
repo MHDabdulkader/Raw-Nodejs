@@ -218,4 +218,25 @@ hander._token.delete = (requestProperties, callBack) => {
 
 };
 
+hander._token.verify = (id, phone, callBack)=>{
+
+    Data.read("token", id, (readError, tokenData)=>{
+        if(!readError && tokenData){
+            let parseTokenData = {...parseJSON(tokenData)};
+            const validUser = parseTokenData.id === id && parseTokenData.phone === phone && parseTokenData.expires > Date.now();
+
+            if(validUser){
+                callBack(true);
+            }
+            else{
+                callBack(false);
+            }
+        }
+        else{
+            callBack(false);
+        }
+    })
+}
+
+
 module.exports = hander;
