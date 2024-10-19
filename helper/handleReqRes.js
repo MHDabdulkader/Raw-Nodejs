@@ -12,7 +12,7 @@ const url = require("url"); /// requested based get data and response
 const  {StringDecoder}   = require("string_decoder");
 const routes = require("../routes/routes");
 const {notFoundHandler} = require("../handlers/routesHandlers/notFoundHandler");
-
+const {parseJSON} = require("../helper/utilites")
 
 
 // module Scaffolding
@@ -56,6 +56,8 @@ handler.handleReqRes = (req, res) =>{
     req.on('end', ()=>{
         realData += decoder.end();
         
+        // insert real data into request propertise:
+        requestProperties.body = parseJSON(realData);
 
         // for using realData to means body:
         chooseHandler(requestProperties, (statusCode, payload)=>{
@@ -67,10 +69,11 @@ handler.handleReqRes = (req, res) =>{
             const payloadString = JSON.stringify(payload);
     
             /// return response
+            res.setHeader("Content-type", "application/json")
             res.writeHead(statusCode);
             res.end(payloadString);
         })
-        res.end("Hello world programmer");
+       
     })
 
     // console.log(path) 
