@@ -12,12 +12,13 @@
 const {sampleHandler} = require("../handlers/routesHandlers/sampleHandler");
 const { tokenHandler } = require("../handlers/routesHandlers/tokenHandler");
 const { userHandler } = require("../handlers/routesHandlers/userHandler");
-
+const { checkHandler } = require("../handlers/routesHandlers/checkHandler");
 
 const routes ={
     sample: sampleHandler,
     user: userHandler,
     token: tokenHandler,
+    check: checkHandler,
 }
 
 
