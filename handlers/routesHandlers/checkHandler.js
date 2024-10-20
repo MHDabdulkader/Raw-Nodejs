@@ -179,11 +179,258 @@ hander._check.post = (requestProperties, callBack) => {
    }
 };
 
-hander._check.put = (requestProperties, callBack) => { };
+hander._check.put = (requestProperties, callBack) => {
+   // body compulsary: check id:
+   const id = typeof requestProperties.body.id === "string" && requestProperties.body.id.trim().length === 20 ? requestProperties.body.id : false;
+
+   // updated values on req body:
+   let protocol =
+      typeof requestProperties.body.protocol === "string" &&
+         ["http", "https"].indexOf(requestProperties.body.protocol) >= 0
+         ? requestProperties.body.protocol
+         : false;
+
+   let url =
+      typeof requestProperties.body.url === "string" &&
+         requestProperties.body.url.trim().length > 0
+         ? requestProperties.body.url
+         : false;
+
+   let method =
+      typeof requestProperties.body.method === "string" &&
+         ["GET", "POST", "PUT", "DELETE"].indexOf(
+            requestProperties.body.method
+         ) >= 0
+         ? requestProperties.body.method
+         : false;
+
+   let successCodes =
+      typeof requestProperties.body.successCodes === "object" &&
+         requestProperties.body.successCodes instanceof Array
+         ? requestProperties.body.successCodes
+         : false;
+
+   // wait for response from url 1s to 5s otherwise ignore
+   let timeoutSeconds =
+      typeof requestProperties.body.timeoutSeconds === "number" &&
+         requestProperties.body.timeoutSeconds % 1 === 0 &&
+         requestProperties.body.timeoutSeconds >= 1 &&
+         requestProperties.body.timeoutSeconds <= 5
+         ? requestProperties.body.timeoutSeconds
+         : false;
+
+   if (id) {
+      if (protocol || url || method || successCodes || timeoutSeconds) {
+         // id -> check id on (req: body)
+         Data.read("checks", id, (checkReadError, checkData) => {
+            if (!checkReadError && checkData) {
+               const checkObjects = parseJSON(checkData);
+               const token = typeof requestProperties.headersObject.token === "string" ? requestProperties.headersObject.token : false;
+
+               tokenHandler._token.verify(token, checkObjects.userPhone, (tokenVaild) => {
+                  if (tokenVaild) {
+                     if (protocol) {
+                        checkObjects.protocol = protocol;
+                     }
+                     if (url) {
+                        checkObjects.url = url;
+                     }
+                     if (method) {
+                        checkObjects.method = method;
+                     }
+                     if (successCodes) {
+                        checkObjects.successCodes = successCodes;
+                     }
+                     if (timeoutSeconds) {
+                        checkObjects.timeoutSeconds = timeoutSeconds;
+                     }
+
+                     Data.update("checks", id, checkObjects, (updateError) => {
+                        if (!updateError) {
+                           callBack(200, {
+                              "message": "checks update"
+                           })
+                        }
+                        else {
+                           callBack(500, {
+                              error: "server side update problem!"
+                           })
+                        }
+                     })
+
+
+                  }
+                  else {
+                     callBack(403, {
+                        error: "Authorization is not vaild"
+                     })
+                  }
+               })
+            }
+            else {
+               callBack(500, {
+                  error: "Check is not founded"
+               })
+            }
+         })
+      }
+      else {
+         callBack(400, {
+            error: "Provide some else then id for update checks"
+         })
+      }
+   }
+   else {
+      callBack(400, {
+         error: "There is problem on your request"
+      })
+   }
+};
 
 // auth check
-hander._check.get = (requestProperties, callBack) => { };
+hander._check.get = (requestProperties, callBack) => {
+   const id =
+      typeof requestProperties.queryStringObject.id === "string" &&
+         requestProperties.queryStringObject.id.trim().length === 20
+         ? requestProperties.queryStringObject.id
+         : false;
+   if (id) {
+      Data.read("checks", id, (checkReadError, checkData) => {
+         if (!checkReadError && checkData) {
+            // token and its validation:
+            let token = typeof requestProperties.headersObject.token === "string" ? requestProperties.headersObject.token : false;
 
-hander._check.delete = (requestProperties, callBack) => { };
+            if (token) {
+               // parse check data;
+               let parseCheckData = parseJSON(checkData);
+               let phone = parseCheckData.userPhone;
+               tokenHandler._token.verify(token, phone, (verifyVaild) => {
+                  if (verifyVaild) {
+                     callBack(200, parseCheckData);
+                  }
+                  else {
+                     callBack(403, {
+                        error: "Authorization error!"
+                     })
+                  }
+               })
+            }
+            else {
+               callBack(403, {
+                  error: "Authorization token missing error!"
+               })
+            }
+         }
+         else {
+            callBack(500, {
+               error: "Server side error"
+            })
+         }
+      })
+   }
+   else {
+      callBack(404, {
+         error: "There is problem on your requested"
+      })
+   }
+};
+
+
+
+hander._check.delete = (requestProperties, callBack) => {
+   const id =
+      typeof requestProperties.queryStringObject.id === "string" &&
+         requestProperties.queryStringObject.id.trim().length === 20
+         ? requestProperties.queryStringObject.id
+         : false;
+   if (id) {
+      Data.read("checks", id, (checkReadError, checkData) => {
+         if (!checkReadError && checkData) {
+            // token and its validation:
+            let token = typeof requestProperties.headersObject.token === "string" ? requestProperties.headersObject.token : false;
+
+            if (token) {
+               // parse check data;
+               let parseCheckData = parseJSON(checkData);
+               let phone = parseCheckData.userPhone;
+               tokenHandler._token.verify(token, phone, (verifyVaild) => {
+                  if (verifyVaild) {
+                     // delete check
+                     Data.delete("checks", id, (deleteError)=>{
+                        if(!deleteError){
+                           // deleted that check from user too.
+                           Data.read("users", phone, (readError, userData)=>{
+                              if(!readError && userData){
+                                 let userObject = parseJSON(userData);
+                                 
+                                 let userChecks = typeof userObject.checks === "object" && userObject.checks instanceof Array ? userObject.checks : [];
+
+                                 // index of id on checks
+                                 let indexCheck = userChecks.indexOf(id);
+
+                                 if(indexCheck >= 0){
+                                    userChecks.splice(indexCheck, 1);
+
+                                    userObject.checks = userChecks;
+
+                                    // update on user folder user check deleted
+                                    Data.update("users", phone, userObject, (userUpdateError)=>{
+                                       if(!userUpdateError){
+                                          callBack(200);
+                                       }
+                                       else{
+                                          callBack(500, {
+                                             error: "Server side problem, (update user on deleted checks)"
+                                          })
+                                       }
+                                    })
+                                 }
+                                 else{
+                                    callBack(400, {
+                                       error: `${userObject.firstName}  ${userObject.lastName} is not used that check`
+                                    })
+                                 }
+                              }
+                              else{
+                                 callBack(404, {
+                                    error: "user not founded"
+                                 })
+                              }
+                           })
+
+
+                        }else{
+                           callBack(500, {
+                              error: "Server side problem"
+                           })
+                        }
+                     })
+                  }
+                  else {
+                     callBack(403, {
+                        error: "Authorization error!"
+                     })
+                  }
+               })
+            }
+            else {
+               callBack(403, {
+                  error: "Authorization token missing error!"
+               })
+            }
+         }
+         else {
+            callBack(500, {
+               error: "Server side error"
+            })
+         }
+      })
+   }
+   else {
+      callBack(404, {
+         error: "There is problem on your requested"
+      })
+   }
+};
 
 module.exports = hander;
